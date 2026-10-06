@@ -327,6 +327,8 @@ ${activeMutationNote ? `- **적용된 돌연변이**: ⚠️ *${activeMutationNo
 추가로 궁금한 특정 서열, 코돈 번역, 혹은 기출 문제 개념이 있으시다면 언제든 질문해 주세요! 💡`;
   };
 
+  const [isVercelApiConnected, setIsVercelApiConnected] = useState<boolean | null>(null);
+
   const handleSendMessage = async (textToSend?: string) => {
     const query = (textToSend || inputMessage).trim();
     if (!query || isLoading) return;
@@ -344,13 +346,10 @@ ${activeMutationNote ? `- **적용된 돌연변이**: ⚠️ *${activeMutationNo
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
 
-    // If user provided a real OpenAI API Key, use real API
-    if (savedApiKey && savedApiKey.startsWith('sk-')) {
-      try {
-        const apiMessages = [
-          {
-            role: 'system',
-            content: `너는 생명과학Ⅱ 및 분자생물학 교육 시뮬레이션 '센트럴도그마(Central Dogma)'의 친절하고 전문적인 AI 튜터 ChatGPT야.
+    const apiMessages = [
+      {
+        role: 'system',
+        content: `너는 생명과학Ⅱ 및 분자생물학 교육 시뮬레이션 '센트럴도그마(Central Dogma)'의 친절하고 전문적인 AI 튜터 ChatGPT야.
 고등학생과 대학생 학습자에게 DNA 복제, 전사, RNA 가공(스플라이싱, 5'Cap, Poly-A), 번역(코돈, 안티코돈, 리보솜, tRNA), 돌연변이(미스센스, 난센스, 침묵, 틀이동) 등을 명확하고 생생하게 설명해 줘.
 현재 실험실 컨텍스트:
 - 생물 모드: ${organismMode}
@@ -358,70 +357,77 @@ ${activeMutationNote ? `- **적용된 돌연변이**: ⚠️ *${activeMutationNo
 - 활성 돌연변이: ${activeMutationNote || '없음'}
 - 시뮬레이션 진행 단계: ${currentStage}단계
 학습자가 직관적으로 이해할 수 있도록 마크다운, 불릿 포인트, 코드 블록을 적절히 활용하여 한국어로 답변해 줘.`
-          },
-          ...messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
-          { role: 'user', content: query }
-        ];
+      },
+      ...messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: query }
+    ];
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${savedApiKey}`
-          },
-          body: JSON.stringify({
-            model: selectedModel === 'gpt-4o' ? 'gpt-4o' : 'gpt-4o-mini',
-            messages: apiMessages,
-            temperature: 0.7,
-            max_tokens: 1500
-          })
-        });
+    try {
+      // 1. Vercel 서버의 /api/chat 호출 (버셀 환경변수 'CHATGPT_API' 사용)
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: apiMessages,
+          model: selectedModel,
+        }),
+      });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData?.error?.message || `HTTP ${response.status}`);
-        }
+      const data = await response.json().catch(() => ({}));
 
-        const data = await response.json();
-        const replyText = data.choices[0]?.message?.content || '응답을 받지 못했습니다.';
-
+      if (response.ok && data.reply) {
+        setIsVercelApiConnected(true);
         const botMsg: ChatMessage = {
           id: 'msg-gpt-' + Date.now(),
           role: 'assistant',
-          content: replyText,
+          content: data.reply,
           timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages(prev => [...prev, botMsg]);
         playSound('step', soundEnabled);
-      } catch (err: unknown) {
-        console.warn('OpenAI API Error, falling back to local biology engine:', err);
-        const errMsg = err instanceof Error ? err.message : String(err);
-        // Fallback with notice
-        const fallbackText = `${generateDomainBioResponse(query)}\n\n> ⚠️ *OpenAI API 호출 에러(${errMsg})로 인해 내장 분자생물학 엔진으로 답변되었습니다.*`;
-        const botMsg: ChatMessage = {
-          id: 'msg-gpt-' + Date.now(),
-          role: 'assistant',
-          content: fallbackText,
-          timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-        };
-        setMessages(prev => [...prev, botMsg]);
-      } finally {
         setIsLoading(false);
+        return;
       }
-    } else {
-      // High-intelligence domain biology engine simulation with realistic typing delay
-      setTimeout(() => {
-        const responseText = generateDomainBioResponse(query);
+
+      // 2. 만약 Vercel 환경변수 CHATGPT_API가 아직 설정되지 않았거나(NO_API_KEY), 에러 발생 시
+      if (data.code === 'NO_API_KEY') {
+        setIsVercelApiConnected(false);
+        // 내장 고지능 분자생물학 엔진으로 자동 폴백 + 친절한 안내 메시지 추가
+        const localBioReply = generateDomainBioResponse(query);
+        const notice = `\n\n> 💡 **Vercel 연동 안내**: Vercel 대시보드(Settings → Environment Variables)에 환경변수 이름 \`CHATGPT_API\`로 OpenAI 키를 등록하시면 실시간 GPT-4o로 즉시 연동됩니다. (현재는 내장 분자생물학 엔진으로 안전하게 정상 답변되었습니다.)`;
+        
         const botMsg: ChatMessage = {
           id: 'msg-gpt-' + Date.now(),
           role: 'assistant',
-          content: responseText,
+          content: localBioReply + notice,
           timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages(prev => [...prev, botMsg]);
-        setIsLoading(false);
         playSound('step', soundEnabled);
-      }, 600);
+      } else {
+        // 기타 OpenAI API 에러 시
+        const errDesc = data.error || `HTTP ${response.status}`;
+        const localBioReply = generateDomainBioResponse(query);
+        const botMsg: ChatMessage = {
+          id: 'msg-gpt-' + Date.now(),
+          role: 'assistant',
+          content: `${localBioReply}\n\n> ⚠️ *OpenAI API 알림 (${errDesc}): 내장 분자생물학 엔진으로 답변되었습니다.*`,
+          timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages(prev => [...prev, botMsg]);
+      }
+    } catch (err: unknown) {
+      console.warn('API fetch failed, falling back to built-in bio engine:', err);
+      const localBioReply = generateDomainBioResponse(query);
+      const botMsg: ChatMessage = {
+        id: 'msg-gpt-' + Date.now(),
+        role: 'assistant',
+        content: localBioReply,
+        timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages(prev => [...prev, botMsg]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -545,7 +551,7 @@ ${activeMutationNote ? `- **적용된 돌연변이**: ⚠️ *${activeMutationNo
             <span className="font-bold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 drop-shadow">
               ChatGPT (생명과학 AI 튜터)
               <span className="text-[10px] bg-black/30 px-1.5 py-0.2 rounded border border-white/20 font-mono">
-                {savedApiKey ? (selectedModel === 'gpt-4o' ? 'GPT-4o (Live)' : 'GPT-4o-mini') : 'Bio-GPT Engine'}
+                {isVercelApiConnected ? 'GPT-4o (CHATGPT_API 연동)' : 'Vercel CHATGPT_API'}
               </span>
             </span>
           </div>
@@ -555,13 +561,13 @@ ${activeMutationNote ? `- **적용된 돌연변이**: ⚠️ *${activeMutationNo
             {/* API Key Modal Button */}
             <button
               onClick={() => setApiKeyModalOpen(true)}
-              title="OpenAI API 키 설정"
+              title="Vercel 환경변수 CHATGPT_API 설정 가이드"
               className={`win98-btn px-1.5 h-6 flex items-center gap-1 text-[11px] font-bold ${
-                savedApiKey ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-gray-200'
+                isVercelApiConnected ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-gray-200'
               }`}
             >
               <Key size={11} />
-              <span className="hidden sm:inline">{savedApiKey ? 'API 연동됨' : 'API 설정'}</span>
+              <span className="hidden sm:inline">CHATGPT_API 설정</span>
             </button>
 
             {/* Clear History Button */}
@@ -595,34 +601,33 @@ ${activeMutationNote ? `- **적용된 돌연변이**: ⚠️ *${activeMutationNo
           </div>
         </div>
 
-        {/* API Key Configuration Modal Overlay */}
+        {/* Vercel Environment Variable & API Information Modal */}
         {apiKeyModalOpen && (
           <div className="p-3 bg-amber-50 dark:bg-slate-800 border-b-2 border-amber-300 dark:border-slate-700 text-xs space-y-2 animate-fade-in">
-            <div className="flex items-center justify-between font-bold text-amber-900 dark:text-amber-300">
+            <div className="flex items-center justify-between font-bold text-amber-900 dark:text-cyan-300">
               <span className="flex items-center gap-1.5">
                 <Key size={13} />
-                OpenAI API Key 설정 (선택 사항)
+                Vercel 환경변수 &apos;CHATGPT_API&apos; 연동 가이드
               </span>
-              <button onClick={() => setApiKeyModalOpen(false)} className="text-gray-500 font-bold">✕</button>
+              <button onClick={() => setApiKeyModalOpen(false)} className="text-gray-500 font-bold hover:text-black">✕</button>
             </div>
-            <p className="text-[11px] text-gray-600 dark:text-gray-400">
-              * 키를 등록하지 않아도 내장 분자생물학 지능 엔진을 통해 자유롭게 100% 무료 Q&A를 이용하실 수 있습니다. 실시간 최신 GPT-4o 연결을 원하시면 본인의 OpenAI API 키를 입력하세요.
+            <div className="p-2.5 bg-white dark:bg-slate-900 rounded border border-gray-300 dark:border-slate-700 space-y-1 font-mono text-[11px]">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 font-bold">환경변수 키(Key):</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 bg-gray-100 dark:bg-slate-800 rounded border border-gray-300 dark:border-slate-700">CHATGPT_API</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 font-bold">값(Value):</span>
+                <span className="text-blue-700 dark:text-blue-400">sk-... (OpenAI Secret API Key)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 font-bold">설정 경로:</span>
+                <span className="text-gray-700 dark:text-gray-300">Vercel Dashboard → Project → Settings → Environment Variables</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
+              * Vercel에 <code className="font-bold text-emerald-600">CHATGPT_API</code> 환경변수를 추가하시면 <code className="font-bold text-blue-600">/api/chat</code> 백엔드 엔드포인트를 통해 실시간 GPT-4o로 안전하게 자동 연동됩니다. 환경변수 등록 전에도 내장 분자생물학 전문 엔진이 100% 무료로 동작합니다.
             </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="password"
-                placeholder="sk-..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="flex-1 px-2.5 py-1 text-xs bg-white dark:bg-slate-900 border border-gray-400 dark:border-slate-600 rounded font-mono shadow-inner outline-none text-gray-900 dark:text-gray-100"
-              />
-              <button
-                onClick={handleSaveApiKey}
-                className="win98-btn px-3 py-1 font-bold text-blue-900 dark:text-blue-300 text-xs"
-              >
-                저장
-              </button>
-            </div>
           </div>
         )}
 
