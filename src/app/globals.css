@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #c0c0c0;
+    --text-main: #111827;
+    --window-surface: #d4d0c8;
+    --neu-bg: #e0e5ec;
+    --neu-shadow-dark: #b8b9be;
+    --neu-shadow-light: #ffffff;
+  }
+
+  .dark {
+    --bg-main: #0f172a;
+    --text-main: #f1f5f9;
+    --window-surface: #1e293b;
+    --neu-bg: #131b2e;
+    --neu-shadow-dark: #090d16;
+    --neu-shadow-light: #1d2946;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", "Gulim", sans-serif;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Windows 98 Classic Bevel Utility Classes */
+.win98-window {
+  background-color: #c0c0c0;
+  box-shadow: inset 1px 1px #dfdfdf, inset -1px -1px #000000, inset 2px 2px #ffffff, inset -2px -2px #808080;
+}
+
+.dark .win98-window {
+  background-color: #1e293b;
+  box-shadow: inset 1px 1px #334155, inset -1px -1px #020617, inset 2px 2px #475569, inset -2px -2px #0f172a;
+}
+
+.win98-box-sunken {
+  box-shadow: inset 1px 1px #808080, inset -1px -1px #ffffff, inset 2px 2px #000000, inset -2px -2px #dfdfdf;
+  background-color: #ffffff;
+}
+
+.dark .win98-box-sunken {
+  box-shadow: inset 1px 1px #0f172a, inset -1px -1px #334155, inset 2px 2px #020617, inset -2px -2px #1e293b;
+  background-color: #0b1120;
+}
+
+.win98-btn {
+  background-color: #c0c0c0;
+  box-shadow: inset 1px 1px #ffffff, inset -1px -1px #000000, inset 2px 2px #dfdfdf, inset -2px -2px #808080;
+  font-weight: 500;
+  transition: all 0.05s ease;
+}
+
+.win98-btn:active, .win98-btn-active {
+  box-shadow: inset 1px 1px #000000, inset -1px -1px #ffffff, inset 2px 2px #808080, inset -2px -2px #dfdfdf;
+  transform: translate(1px, 1px);
+}
+
+.dark .win98-btn {
+  background-color: #334155;
+  box-shadow: inset 1px 1px #475569, inset -1px -1px #020617, inset 2px 2px #3b4d6b, inset -2px -2px #0f172a;
+  color: #f8fafc;
+}
+
+.dark .win98-btn:active, .dark .win98-btn-active {
+  box-shadow: inset 1px 1px #020617, inset -1px -1px #475569, inset 2px 2px #0f172a, inset -2px -2px #3b4d6b;
+  transform: translate(1px, 1px);
+}
+
+/* Neumorphic Soft UI components */
+.neu-card {
+  background: #e6ecf5;
+  box-shadow: 8px 8px 16px #c4cad3, -8px -8px 16px #ffffff;
+  border-radius: 12px;
+}
+
+.dark .neu-card {
+  background: #151e32;
+  box-shadow: 8px 8px 18px #0c1220, -8px -8px 18px #1e2a44;
+  border-radius: 12px;
+}
+
+.neu-inset {
+  box-shadow: inset 4px 4px 8px #c4cad3, inset -4px -4px 8px #ffffff;
+}
+
+.dark .neu-inset {
+  box-shadow: inset 4px 4px 8px #0c1220, inset -4px -4px 8px #1e2a44;
+}
+
+/* Skeuomorphic Metallic Dial & Switches */
+.skeuo-metal {
+  background: linear-gradient(135deg, #f0f0f0 0%, #dcdcdc 50%, #b0b0b0 100%);
+  border: 1px solid #999;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.dark .skeuo-metal {
+  background: linear-gradient(135deg, #3a4759 0%, #293444 50%, #1e2837 100%);
+  border: 1px solid #4a5c73;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* LED Indicator Glowing Animation */
+.led-green {
+  background-color: #22c55e;
+  box-shadow: 0 0 8px #22c55e, 0 0 12px #22c55e;
+}
+
+.led-amber {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b, 0 0 12px #f59e0b;
+}
+
+.led-blue {
+  background-color: #3b82f6;
+  box-shadow: 0 0 8px #3b82f6, 0 0 12px #3b82f6;
+}
+
+/* CRT Subtle Scanlines */
+.scanlines {
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+}
