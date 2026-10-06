@@ -203,7 +203,7 @@ ${activeMutationNote ? `- **적용된 돌연변이**: ⚠️ *${activeMutationNo
 
 #### 💡 핵심 고찰:
 - **개시 코돈**: mRNA의 첫 번째 \`AUG\`에서 메티오닌(Met)으로부터 번역이 개시됩니다.
-- **종결 여부**: \`${translated.hasStopCodon ? `종결 코돈(${translated.stopCodon})에 의해 정상 종료되었습니다.` : '종결 코돈에 도달하기 전 서열 끝까지 읽혔습니다.'}\`
+- **종결 여부**: \`${translated.hasStopCodon ? `종결 코돈(${translated.residues[translated.residues.length - 1]?.codon || '종결'})에 의해 정상 종료되었습니다.` : '종결 코돈에 도달하기 전 서열 끝까지 읽혔습니다.'}\`
 - **생물학적 의의**: ${organismMode === 'eukaryote' ? '진핵생물은 핵 내에서 이 서열의 pre-mRNA를 합성한 뒤 스플라이싱과 5\'Cap/Poly-A 꼬리를 붙여 세포질로 수송합니다.' : '원핵생물은 핵막이 없으므로 전사가 완료되기도 전에 리보솜이 결합하여 동시 번역(Polysome)됩니다.'}`;
     }
 
