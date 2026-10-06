@@ -7,15 +7,30 @@ import ComparisonGuide from '@/components/ComparisonGuide';
 import QuizRankings from '@/components/QuizRankings';
 import CommunityBoard from '@/components/CommunityBoard';
 import CodonModal from '@/components/CodonModal';
+import ChatGptWindow from '@/components/ChatGptWindow';
 import { playSound } from '@/components/Header';
-import { FlaskConical, BookOpen, Trophy, MessageSquare, Terminal, ExternalLink } from 'lucide-react';
+import { FlaskConical, BookOpen, Trophy, MessageSquare, Bot, Sparkles } from 'lucide-react';
 
 export default function HomePage() {
   const [darkMode, setDarkMode] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [activeTab, setActiveTab] = useState<'simulation' | 'comparison' | 'quiz' | 'community'>('simulation');
+  const [activeTab, setActiveTab] = useState<'simulation' | 'comparison' | 'quiz' | 'community' | 'chatgpt'>('simulation');
   const [isCodonModalOpen, setIsCodonModalOpen] = useState(false);
+  const [isChatGptFloatingOpen, setIsChatGptFloatingOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
+
+  // Live simulation context shared with ChatGPT
+  const [simContext, setSimContext] = useState<{
+    dnaSequence: string;
+    organismMode: 'eukaryote' | 'prokaryote';
+    currentStage: number;
+    activeMutationNote: string | null;
+  }>({
+    dnaSequence: 'ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG',
+    organismMode: 'eukaryote',
+    currentStage: 0,
+    activeMutationNote: null,
+  });
 
   // Set dark class on html
   useEffect(() => {
@@ -39,11 +54,17 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleOpenChatGpt = () => {
+    setIsChatGptFloatingOpen(true);
+    playSound('click', soundEnabled);
+  };
+
   const tabs = [
     { id: 'simulation', label: '🔬 중심원리 가상 실험실', icon: FlaskConical },
     { id: 'comparison', label: '🧬 원핵 vs 진핵 비교 도감', icon: BookOpen },
     { id: 'quiz', label: '🏆 스피드 퀴즈 & 랭킹', icon: Trophy },
     { id: 'community', label: '💬 탐구 토론방 & Q&A', icon: MessageSquare },
+    { id: 'chatgpt', label: '🤖 ChatGPT AI 튜터', icon: Bot },
   ];
 
   return (
@@ -76,8 +97,22 @@ export default function HomePage() {
                     : 'bg-[#d4d0c8] dark:bg-slate-900/60 border-transparent text-gray-700 dark:text-gray-400 hover:bg-gray-200'
                 }`}
               >
-                <Icon size={14} className={isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'} />
+                <Icon
+                  size={14}
+                  className={
+                    tab.id === 'chatgpt'
+                      ? 'text-[#10a37f]'
+                      : isActive
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-gray-500'
+                  }
+                />
                 <span>{tab.label}</span>
+                {tab.id === 'chatgpt' && (
+                  <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-full font-bold">
+                    AI
+                  </span>
+                )}
               </button>
             );
           })}
@@ -89,6 +124,8 @@ export default function HomePage() {
             <SimulationView
               soundEnabled={soundEnabled}
               onOpenCodonModal={() => setIsCodonModalOpen(true)}
+              onOpenChatGpt={handleOpenChatGpt}
+              onSimulationStateChange={(state) => setSimContext(state)}
             />
           )}
 
@@ -97,8 +134,48 @@ export default function HomePage() {
           {activeTab === 'quiz' && <QuizRankings soundEnabled={soundEnabled} />}
 
           {activeTab === 'community' && <CommunityBoard soundEnabled={soundEnabled} />}
+
+          {activeTab === 'chatgpt' && (
+            <ChatGptWindow
+              isOpen={true}
+              onClose={() => setActiveTab('simulation')}
+              isFloating={false}
+              currentDnaSequence={simContext.dnaSequence}
+              organismMode={simContext.organismMode}
+              currentStage={simContext.currentStage}
+              activeMutationNote={simContext.activeMutationNote}
+              soundEnabled={soundEnabled}
+            />
+          )}
         </div>
       </main>
+
+      {/* Floating ChatGPT Window (when launched from floating button or simulation button) */}
+      {isChatGptFloatingOpen && activeTab !== 'chatgpt' && (
+        <ChatGptWindow
+          isOpen={true}
+          onClose={() => setIsChatGptFloatingOpen(false)}
+          isFloating={true}
+          currentDnaSequence={simContext.dnaSequence}
+          organismMode={simContext.organismMode}
+          currentStage={simContext.currentStage}
+          activeMutationNote={simContext.activeMutationNote}
+          soundEnabled={soundEnabled}
+        />
+      )}
+
+      {/* Global Floating Quick Launcher Button for ChatGPT */}
+      {!isChatGptFloatingOpen && activeTab !== 'chatgpt' && (
+        <button
+          onClick={handleOpenChatGpt}
+          className="fixed bottom-12 sm:bottom-14 right-4 sm:right-6 z-40 win98-btn px-3.5 py-2 rounded-full shadow-2xl flex items-center gap-2 border-2 border-white dark:border-slate-700 hover:scale-105 transition bg-[#10a37f] text-white font-bold text-xs"
+          title="ChatGPT 생명과학 AI 튜터 열기"
+        >
+          <Bot size={16} />
+          <span>ChatGPT 튜터</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-200 animate-ping"></span>
+        </button>
+      )}
 
       {/* Codon Modal */}
       <CodonModal
@@ -115,10 +192,32 @@ export default function HomePage() {
             <span>시작 (Start)</span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 px-2 border-l border-gray-400 dark:border-slate-700 text-[11px] text-gray-700 dark:text-gray-300">
+          {/* ChatGPT Taskbar Running App Item */}
+          <button
+            onClick={() => {
+              if (activeTab === 'chatgpt') {
+                setActiveTab('simulation');
+              } else {
+                setIsChatGptFloatingOpen(!isChatGptFloatingOpen);
+              }
+              playSound('click', soundEnabled);
+            }}
+            className={`win98-btn px-2 py-1 flex items-center gap-1.5 font-bold text-xs ${
+              isChatGptFloatingOpen || activeTab === 'chatgpt'
+                ? 'win98-btn-active bg-[#ece9d8] dark:bg-slate-700 text-emerald-800 dark:text-emerald-300 shadow-inner'
+                : 'text-gray-800 dark:text-gray-200'
+            }`}
+            title="ChatGPT 창 토글"
+          >
+            <Bot size={13} className="text-[#10a37f]" />
+            <span className="hidden sm:inline">ChatGPT_TUTOR.EXE</span>
+            <span className="sm:hidden">ChatGPT</span>
+          </button>
+
+          <div className="hidden md:flex items-center gap-2 px-2 border-l border-gray-400 dark:border-slate-700 text-[11px] text-gray-700 dark:text-gray-300">
             <span>센트럴도그마 (Central Dogma) 교육 시뮬레이션</span>
             <span className="text-gray-400">|</span>
-            <span className="font-mono">Next.js 14 · Tailwind CSS · Supabase DB</span>
+            <span className="font-mono">Next.js 14 · Tailwind CSS · ChatGPT AI</span>
           </div>
         </div>
 

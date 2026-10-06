@@ -26,7 +26,8 @@ import {
   Layers,
   HelpCircle,
   Check,
-  MousePointerClick
+  MousePointerClick,
+  Bot
 } from 'lucide-react';
 import InteractiveTrnaTranslation from './InteractiveTrnaTranslation';
 
@@ -34,9 +35,21 @@ import InteractiveTrnaTranslation from './InteractiveTrnaTranslation';
 interface SimulationViewProps {
   soundEnabled: boolean;
   onOpenCodonModal: () => void;
+  onOpenChatGpt?: (prompt?: string) => void;
+  onSimulationStateChange?: (state: {
+    dnaSequence: string;
+    organismMode: 'eukaryote' | 'prokaryote';
+    currentStage: number;
+    activeMutationNote: string | null;
+  }) => void;
 }
 
-export default function SimulationView({ soundEnabled, onOpenCodonModal }: SimulationViewProps) {
+export default function SimulationView({
+  soundEnabled,
+  onOpenCodonModal,
+  onOpenChatGpt,
+  onSimulationStateChange,
+}: SimulationViewProps) {
   // Mode: Eukaryote vs Prokaryote
   const [organismMode, setOrganismMode] = useState<'eukaryote' | 'prokaryote'>('eukaryote');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('standard');
@@ -58,8 +71,17 @@ export default function SimulationView({ soundEnabled, onOpenCodonModal }: Simul
   const dnaTemplate = useMemo(() => getComplementaryDna(dnaCoding), [dnaCoding]);
   const rawMrna = useMemo(() => transcribeToRna(dnaCoding), [dnaCoding]);
 
-  // For Eukaryotes, simulate an intron in the middle if sequence is long enough
   const currentPreset = useMemo(() => PRESETS.find(p => p.id === selectedPresetId) || PRESETS[0], [selectedPresetId]);
+
+  // Notify parent of simulation state changes
+  useEffect(() => {
+    onSimulationStateChange?.({
+      dnaSequence: dnaCoding,
+      organismMode,
+      currentStage,
+      activeMutationNote,
+    });
+  }, [dnaCoding, organismMode, currentStage, activeMutationNote, onSimulationStateChange]);
   
   const processedMrna = useMemo(() => {
     if (organismMode === 'prokaryote') {
@@ -354,6 +376,15 @@ export default function SimulationView({ soundEnabled, onOpenCodonModal }: Simul
             >
               <span>📊 코돈 표 보기</span>
             </button>
+
+            <button
+              onClick={() => onOpenChatGpt?.()}
+              className="win98-btn px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              title="ChatGPT 분자생물학 AI 튜터 열기"
+            >
+              <Bot size={13} className="text-[#10a37f]" />
+              <span>🤖 ChatGPT 질문</span>
+            </button>
           </div>
         </div>
 
@@ -390,12 +421,21 @@ export default function SimulationView({ soundEnabled, onOpenCodonModal }: Simul
         </div>
 
         {activeMutationNote && (
-          <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between">
+          <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded text-xs text-amber-900 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Info size={14} className="shrink-0 text-amber-600" />
               <span>{activeMutationNote}</span>
             </div>
-            <button onClick={() => setActiveMutationNote(null)} className="font-bold ml-2">✕</button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onOpenChatGpt?.(`방금 적용된 "${activeMutationNote}"에 대해 분자유전학적 원리와 결과를 쉽게 설명해줘`)}
+                className="win98-btn px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1 hover:bg-emerald-100"
+              >
+                <Bot size={11} className="text-[#10a37f]" />
+                <span>ChatGPT 해설</span>
+              </button>
+              <button onClick={() => setActiveMutationNote(null)} className="font-bold ml-1 text-gray-500 hover:text-black">✕</button>
+            </div>
           </div>
         )}
       </div>
