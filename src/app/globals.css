@@ -129,3 +129,58 @@
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
   background-size: 100% 4px;
 }
+
+/* tRNA Docking & Translation Animations */
+@keyframes trnaDock {
+  0% {
+    transform: translateY(-80px) scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(0) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes peptideBond {
+  0% {
+    transform: scale(0.8);
+    filter: brightness(2);
+  }
+  50% {
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 12px #eab308);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes trnaExit {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-90px) translateX(40px) scale(0.6) rotate(20deg);
+    opacity: 0;
+  }
+}
+
+.animate-trna-dock {
+  animation: trnaDock 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-peptide-bond {
+  animation: peptideBond 0.5s ease-out forwards;
+}
+
+.animate-trna-exit {
+  animation: trnaExit 0.6s ease-in forwards;
+}
+

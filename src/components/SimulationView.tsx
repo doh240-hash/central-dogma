@@ -25,8 +25,11 @@ import {
   Activity,
   Layers,
   HelpCircle,
-  Check
+  Check,
+  MousePointerClick
 } from 'lucide-react';
+import InteractiveTrnaTranslation from './InteractiveTrnaTranslation';
+
 
 interface SimulationViewProps {
   soundEnabled: boolean;
@@ -586,90 +589,33 @@ export default function SimulationView({ soundEnabled, onOpenCodonModal }: Simul
           </div>
         )}
 
-        {/* Visual Track 4: Ribosome Translation & Growing Polypeptide Chain */}
-        <div className="win98-box-sunken p-4 rounded space-y-4">
-          <div className="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              리보솜 번역 및 생성된 폴리펩타이드 (Polypeptide Chain)
-            </span>
-            <span className="text-[11px] text-gray-500 font-normal">
-              합성된 아미노산 잔기: {translationProgress} / {translationResult.residues.length}개
-            </span>
-          </div>
-
-          {/* Translation Residues Ribbon */}
-          {translationProgress > 0 ? (
-            <div className="space-y-3">
-              {/* Amino Acid Beads Ribbon */}
-              <div className="flex items-center gap-1.5 flex-wrap p-2.5 bg-slate-900 text-white rounded border border-slate-700 shadow-inner">
-                <span className="font-mono text-xs font-bold text-amber-400 shrink-0 mr-1">
-                  N-말단 (NH₂):
-                </span>
-                {translationResult.residues.slice(0, translationProgress).map((res, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center group relative cursor-pointer"
-                  >
-                    <div
-                      style={{ backgroundColor: res.aminoAcid.color }}
-                      className="px-2 py-1 rounded text-slate-950 font-bold text-xs flex flex-col items-center justify-center shadow-md border border-white/40 hover:scale-110 transition"
-                    >
-                      <span className="font-mono">{res.aminoAcid.code3}</span>
-                      <span className="text-[9px] opacity-75">{res.aminoAcid.code1}</span>
-                    </div>
-
-                    {/* Peptide Bond Line */}
-                    {i < translationProgress - 1 && (
-                      <span className="w-2 h-0.5 bg-gray-400 mx-0.5"></span>
-                    )}
-
-                    {/* Tooltip on hover */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20 bg-black/90 text-white text-[11px] p-2 rounded shadow-lg whitespace-nowrap">
-                      <div className="font-bold">{res.aminoAcid.nameKr} ({res.aminoAcid.nameEn})</div>
-                      <div>코돈: {res.codon} | 안티코돈: {res.anticodon}</div>
-                      <div>특성: {res.aminoAcid.property}</div>
-                    </div>
-                  </div>
-                ))}
-                {currentStage === 4 && (
-                  <span className="font-mono text-xs font-bold text-rose-400 shrink-0 ml-1">
-                    : C-말단 (COOH)
-                  </span>
-                )}
-              </div>
-
-              {/* Active Codon-Anticodon Pairing Inspector */}
-              {translationProgress > 0 && translationProgress <= translationResult.residues.length && (
-                <div className="p-3 bg-blue-50 dark:bg-slate-800 rounded border border-blue-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div>
-                    <span className="font-bold text-blue-900 dark:text-blue-300">
-                      현재 번역 위치 (코돈 #{translationProgress}):
-                    </span>{' '}
-                    <span className="font-mono font-bold bg-white dark:bg-slate-900 px-2 py-0.5 rounded border">
-                      {translationResult.residues[translationProgress - 1]?.codon}
-                    </span>{' '}
-                    <span className="text-gray-400">↔ tRNA 안티코돈:</span>{' '}
-                    <span className="font-mono font-bold bg-white dark:bg-slate-900 px-2 py-0.5 rounded border text-emerald-600">
-                      {translationResult.residues[translationProgress - 1]?.anticodon}
-                    </span>
-                  </div>
-
-                  <div className="font-semibold text-gray-700 dark:text-gray-300">
-                    아미노산:{' '}
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">
-                      {translationResult.residues[translationProgress - 1]?.aminoAcid.nameKr}
-                    </span>{' '}
-                    ({translationResult.residues[translationProgress - 1]?.aminoAcid.property})
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-400 dark:text-gray-600 italic py-3 text-center">
-              [번역 대기 중] 개시 코돈(AUG) 탐색 후 리보솜에 의한 아미노산 펩타이드 사슬이 여기에 형성됩니다.
-            </div>
-          )}
+        {/* Visual Track 4: Interactive Ribosome Translation & tRNA Docking Simulation */}
+        <div className="pt-2">
+          <InteractiveTrnaTranslation
+            mrnaSequence={activeMrnaForTranslation}
+            residues={translationResult.residues}
+            currentIndex={translationProgress}
+            onTranslateSuccess={(newIdx) => {
+              if (currentStage < 3) {
+                setCurrentStage(3);
+                setTranscriptionProgress(dnaCoding.length);
+                setCapTailDone(true);
+                setSplicingDone(true);
+              }
+              setTranslationProgress(newIdx);
+              if (newIdx >= translationResult.residues.length) {
+                setCurrentStage(4);
+                setIsPlaying(false);
+                playSound('success', soundEnabled);
+              }
+            }}
+            onReset={() => {
+              setTranslationProgress(0);
+              setCurrentStage(3);
+            }}
+            soundEnabled={soundEnabled}
+            isComplete={currentStage === 4 || translationProgress >= translationResult.residues.length}
+          />
         </div>
       </div>
     </div>
